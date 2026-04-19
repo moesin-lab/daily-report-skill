@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# 阻止 .env / PERSONA.md 进入 commit。即使 git add -f 强加入也拒绝。
+#
+# 启用方式（仓库根目录执行一次）：
+#   git config core.hooksPath hooks
+# 或直接跑：
+#   bash scripts/install-hooks.sh
+set -euo pipefail
+
+BLOCKED_PATTERNS=(
+  '^\.env$'
+  '^PERSONA\.md$'
+  '(^|/)\.env$'
+  '(^|/)PERSONA\.md$'
+)
+
+# 取所有已 staged 文件（新增 / 修改 / 改名）
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+if [ -z "$staged" ]; then
+  exit 0
+fi
+
+violations=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  for pattern in "${BLOCKED_PATTERNS[@]}"; do
+    if printf '%s' "$file" | grep -Eq "$pattern"; then
+      violations+=("$file")
+      break
+    fi
+  done
+done <<< "$staged"
+
+if [ "${#violations[@]}" -gt 0 ]; then
+  echo "pre-commit: 拒绝提交以下文件（含本地身份 / 凭证，只能留在本地）：" >&2
+  for v in "${violations[@]}"; do
+    echo "  - $v" >&2
+  done
+  echo "如果是误 add，先 git reset HEAD <file> 再 commit。" >&2
+  echo "如果你确定要打破规则，只有一条路：编辑 hooks/pre-commit。" >&2
+  exit 1
+fi
