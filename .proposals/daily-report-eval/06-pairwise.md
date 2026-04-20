@@ -13,7 +13,7 @@
 
 ## Baseline
 
-冻结 3 份真实一天日报（当前候选 4-08 / 4-12 / 4-17），落 `tests/baselines/`；每份含完整产物（markdown / facets / cards）。季度刷新，旧 baseline 降级为历史对比集不删。
+冻结 3 份真实一天日报，落 `tests/baselines/`；每份含完整产物（markdown / facets / cards）。季度刷新，旧 baseline 降级为历史对比集不删。
 
 ## 流程
 

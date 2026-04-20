@@ -6,11 +6,11 @@
 
 ## 隔离资源清单
 
-- 专用博客仓：`sentixA/daily-report-eval`（独立仓）或主博客 `eval/YYYY-MM-DD` 分支族；`BLOG_REMOTE_URL` 覆盖 origin
-- 专用 mails mailbox：`eval-sentix@mails.dev` + 独立 API key；`MAILS_CONFIG` 指向独立 config
+- 专用博客仓：`<author>/daily-report-eval`（独立仓）或主博客 `eval/YYYY-MM-DD` 分支族；`BLOG_REMOTE_URL` 覆盖 origin
+- 专用 mails mailbox：`eval-<handle>@<domain>` + 独立 API key；`MAILS_CONFIG` 指向独立 config
 - 专用 Telegram bot + 测试群；`TELEGRAM_BOT_TOKEN` / `CC_NOTIFY_CHAT_ID` 覆盖
 - 真 codex token 复用主账号；`CODEX_BIN` 指回真实 codex（不读 replay）
-- Track B 专属 fixture：取真实最近一天（当前候选 2026-04-17），**不共享** Track A 的 `typical-day`
+- Track B 专属 fixture：取真实最近一天，**不共享** Track A 的 `typical-day`
 - 资源清单集中：`~/.claude/.tasks/eval-b-env.sh` 导出全部覆盖变量
 
 ## 真实调用验证（每次 Track B 触发都跑）

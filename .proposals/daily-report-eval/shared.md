@@ -199,7 +199,7 @@ Anthropic 原生不支持 Claude 对话从任意中点分叉 resume（`claude --
 ### 不完整 context 的已知损失
 
 - 主 agent 之前对 session 内容的"未落盘的判断"会丢失（这正是 `phase-notes/` 要捕获的部分）
-- 主 agent 对用户对话历史的感知丢失（但 daily-report 本就不应依赖这个，此前已有 feedback 明确"日报读者只是 SentixA 本人"）
+- 主 agent 对用户对话历史的感知丢失（但 daily-report 本就不应依赖这个，此前已有 feedback 明确"日报读者只是作者本人"）
 - 如果 skill 中途改了 `SKILL.md` 或 workflow 文档 → resume 后主 agent 读的是新版，与 checkpoint 时的 context 不一致；这正是 `checkpoint-compat.py` 要拦住的场景，不兼容 → infra-failure
 
 上述损失评测层面可接受：`07-paired-eval.md` 在 checkpoint 共享前序阶段时会跑一次 "无 checkpoint 对照 run" 作为 spot-check（抽样 20% 的 fixture），对比 L1 断言结果，若共享 checkpoint 导致的 pass 差异 > 5% 则禁用 checkpoint 加速。

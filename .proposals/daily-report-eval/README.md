@@ -59,6 +59,6 @@
 
 - 测试实现与 fixture 落 `~/.claude/skills/daily-report/tests/` 和 `~/.claude/skills/daily-report/evals/`
 - 迭代工作区（iteration-N / eval-viewer 产物）落 `~/.claude/skills/daily-report/evals/workspace/`，对齐 skill-creator 生态
-- 本目录 `.tasks/daily-report-eval/` 只放计划文档，不含代码
+- 本目录 `.proposals/daily-report-eval/` 只放计划文档，不含代码
 
 本目录仅计划，未实施。
