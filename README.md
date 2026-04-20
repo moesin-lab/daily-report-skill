@@ -24,7 +24,6 @@ Ask your Claude Code agent to run:
 
     Fetch and follow instructions from https://raw.githubusercontent.com/moesin-lab/daily-report-skill/main/INSTALL.md
 
-(Works once this repo is public. For the current private state, clone first, then ask the agent to read the local `INSTALL.md`:)
 
 ```bash
 git clone git@github.com:moesin-lab/daily-report-skill.git ~/.claude/skills/daily-report
