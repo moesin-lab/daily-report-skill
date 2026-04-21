@@ -33,9 +33,9 @@ scripts/
 | `session/build-merge-groups.py` | 1.4 | `RUN_DIR`、phase1 cards | `merge-groups.json` |
 | `session/assemble-session-cards.py` | 1.5 | `RUN_DIR` | `session-cards.md` |
 | `session/publish-facet.py` | 1.5 | `RUN_DIR`、`TARGET_DATE`、`BLOG_FACETS_ROOT` | `$BLOG_FACETS_ROOT/YYYY/MM/DD/<sid>.json` |
-| `review/run-opposing-codex.py` | 2.2 | 窗口变量、`TARGET_DATE`、`RUN_DIR` | `opposing.env` + work-map/prompt/raw/clean/status files |
+| `review/run-opposing-agent.py` | 2.2 | 窗口变量、`TARGET_DATE`、`RUN_DIR`、可选 `OPPOSING_BACKEND`/`--opposing-backend`、`--opposing-timeout` | `opposing.env` + work-map/prompt/raw/clean/status files |
 | `review/build-opposing-prompt.py` | 2.2 | 窗口变量 | opposing prompt 文件路径 |
-| `review/parse-codex-output.py` | 2.2 | Codex raw stdout | cleaned content + ok status |
+| `review/parse-opposing-output.py` | 2.2 | backend raw stdout（JSON payload 或兜底纯文本） | cleaned content + ok status |
 | `publish/send-telegram-opposing.sh` | 2.2 | `TARGET_DATE`、content file | Telegram API send result |
 | `review/assemble-candidates.py` | 2.4 | candidates JSON、validations JSONL | reflection/suggestions/memory candidate files |
 | `session/aggregate-facet.py` | 2.5 | `RUN_DIR` | stdout Markdown `## Session 指标`，无 facet 时为空 |
@@ -55,6 +55,29 @@ scripts/
 - LLM 产物必须经 lint；lint 不评价语义质量，只做结构闸门。
 - `lint-phase1.py` 必须先于 `lint-facet.py` 运行，因为前者覆盖写报告、后者追加。
 - `publish-facet.py` 只对语义无序字段做 canonical 比较，不改磁盘原文。
+
+## 反方 reviewer backend（第 2.2 步）
+
+`run-opposing-agent.py` 抽了一层 `OPPOSING_BACKEND`，把"用哪个异构模型做反方视角"从 pipeline 里解耦出来。接口契约：
+
+- 输入：`build-opposing-prompt.py` 生成的 prompt 文本文件。
+- 输出：写到 `raw_file` 的 stdout 字节流，可以是 JSON payload（含 `status`/`rawOutput`）或纯文本；`parse-opposing-output.py` 会自动识别两种形态。
+- 退出码：0 成功，124 超时，126/127 环境错误，其它非 0 走统一 fallback 路径。
+- 超时：由 runner 侧 `--opposing-timeout` 控制（默认 600s），backend 不自负责。
+
+当前实现的 backend：
+
+| 名称 | 实现 | 说明 |
+|---|---|---|
+| `codex-plugin`（默认） | `node <plugin_root>/scripts/codex-companion.mjs task --json --prompt-file <prompt>` | 走 Claude Code `openai-codex` 插件的 shared runtime，自动探测 `~/.claude/plugins/cache/openai-codex/codex/*` 下最新版本；approval/sandbox 走 `~/.codex/config.toml` |
+
+接新 backend（例如 `kimi-code` 或自建 HTTP reviewer）只需在 `run_backend()` 里加一个 branch + 对应子进程；parser 层无需改（会走兜底纯文本分支），除非新 backend 也提供机读 JSON。
+
+选择方式：
+- `OPPOSING_BACKEND=<name>` 环境变量
+- `--opposing-backend <name>` CLI 参数（后者覆盖前者）
+
+Codex 独家走 plugin，不再保留直接 `codex exec` 兜底——如果 plugin 缺失，请重装 plugin 或临时切到其它 backend。
 
 ## 验证
 
