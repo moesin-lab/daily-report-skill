@@ -1,11 +1,11 @@
-## 第 2.2 步：反方视角（Codex）
+## 第 2.2 步：反方视角（异构 Agent）
 
-只通过 `scripts/review/run-opposing-codex.py` 执行。不要手动调用 `codex exec`、`codex-review` skill 或 `cc-connect relay`。
+只通过 `scripts/review/run-opposing-agent.py` 执行。默认 backend 为 `codex-plugin`（走 openai-codex Claude Code 插件的 shared runtime）；替换 backend 用 `OPPOSING_BACKEND` 或 `--opposing-backend`，见 `scripts/README.md` 的「反方 reviewer backend」段。不要手动调用 `codex exec`、`codex-review` skill 或 `cc-connect relay`。
 
 ### 执行
 
 ```bash
-OPPOSING_ENV=$(python3 ~/.claude/skills/daily-report/scripts/review/run-opposing-codex.py \
+OPPOSING_ENV=$(python3 ~/.claude/skills/daily-report/scripts/review/run-opposing-agent.py \
   --window-start "$WINDOW_START" \
   --window-end "$WINDOW_END" \
   --window-start-iso "$WINDOW_START_ISO" \

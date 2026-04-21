@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Run the daily-report opposing Codex stage end to end.
+"""Run the daily-report opposing-agent stage end to end.
 
-This script keeps the existing small scripts as the source of truth:
+Dispatches to a heterogeneous reviewer backend (default: `codex-plugin`)
+via `run_backend()`; the small scripts keep the pipeline seams:
 - build-work-map.py builds the metadata-only attention prior.
-- build-opposing-prompt.py builds the actual Codex prompt.
-- parse-codex-output.py strips Codex CLI wrapper text.
+- build-opposing-prompt.py builds the actual reviewer prompt.
+- parse-opposing-output.py extracts assistant text from the backend raw dump.
 
 It only orchestrates the mechanical glue that used to live in workflow prose.
 """
 from __future__ import annotations
 
 import argparse
+import glob
 import os
 import shlex
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -23,6 +24,11 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPT_DIR.parents[1]
 PUBLISH_DIR = SKILL_DIR / "scripts" / "publish"
+
+DEFAULT_BACKEND = "codex-plugin"
+CODEX_PLUGIN_CACHE_GLOB = str(
+    Path.home() / ".claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs"
+)
 
 
 def run_python(script: Path, args: list[str]) -> str:
@@ -70,7 +76,7 @@ def notify_failure(target_date: str, reason: str) -> None:
     notifier = os.environ.get("DR_NOTIFY_CMD") or str(PUBLISH_DIR / "send-cc-notification.sh")
     if notifier != ":" and not Path(notifier).exists():
         print(
-            f"[run-opposing-codex] warning: notifier not found: {notifier}",
+            f"[run-opposing-agent] warning: notifier not found: {notifier}",
             file=sys.stderr,
         )
         return
@@ -83,7 +89,7 @@ def notify_failure(target_date: str, reason: str) -> None:
     )
     if proc.returncode != 0:
         print(
-            "[run-opposing-codex] warning: failure notification failed: "
+            "[run-opposing-agent] warning: failure notification failed: "
             f"{proc.stderr.strip() or proc.stdout.strip()}",
             file=sys.stderr,
         )
@@ -93,7 +99,7 @@ def send_telegram(target_date: str, run_dir: Path, opposing_file: Path) -> None:
     sender = PUBLISH_DIR / "send-telegram-opposing.sh"
     if not sender.exists():
         print(
-            f"[run-opposing-codex] warning: telegram sender not found: {sender}",
+            f"[run-opposing-agent] warning: telegram sender not found: {sender}",
             file=sys.stderr,
         )
         return
@@ -110,42 +116,64 @@ def send_telegram(target_date: str, run_dir: Path, opposing_file: Path) -> None:
     )
     if proc.returncode != 0:
         print(
-            "[run-opposing-codex] warning: telegram send failed: "
+            "[run-opposing-agent] warning: telegram send failed: "
             f"{proc.stderr.strip() or proc.stdout.strip()}",
             file=sys.stderr,
         )
 
 
-def run_codex(
+def _discover_codex_plugin_root() -> Path | None:
+    """Find the latest installed openai-codex plugin by mtime.
+
+    Returns the plugin root (<cache>/openai-codex/codex/<version>/) or None.
+    """
+    matches = glob.glob(CODEX_PLUGIN_CACHE_GLOB)
+    if not matches:
+        return None
+    matches.sort(key=lambda p: Path(p).stat().st_mtime, reverse=True)
+    # `<root>/scripts/codex-companion.mjs` -> `<root>`
+    return Path(matches[0]).resolve().parent.parent
+
+
+def _run_codex_plugin(
     prompt_file: Path,
     raw_file: Path,
     stderr_file: Path,
-    codex_bin: str,
     timeout_sec: int,
 ) -> int:
-    if shutil.which(codex_bin) is None and not Path(codex_bin).exists():
+    plugin_root = _discover_codex_plugin_root()
+    if plugin_root is None:
         raw_file.write_text(
-            f"CODEX_ERROR: executable not found: {codex_bin}\n",
+            "CODEX_ERROR: codex plugin not found under "
+            f"{CODEX_PLUGIN_CACHE_GLOB}\n",
+            encoding="utf-8",
+        )
+        return 127
+    companion = plugin_root / "scripts" / "codex-companion.mjs"
+    if not companion.exists():
+        raw_file.write_text(
+            f"CODEX_ERROR: companion script missing: {companion}\n",
             encoding="utf-8",
         )
         return 127
 
     codex_cwd = os.environ.get("CODEX_CWD") or os.getcwd()
+    env = os.environ.copy()
+    env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
     cmd = [
-        codex_bin,
-        "exec",
-        "--dangerously-bypass-approvals-and-sandbox",
-        "--skip-git-repo-check",
-        "--cd",
-        codex_cwd,
+        "node",
+        str(companion),
+        "task",
+        "--json",
+        "--prompt-file",
+        str(prompt_file),
     ]
     try:
-        with prompt_file.open("rb") as stdin, raw_file.open("wb") as stdout, stderr_file.open(
-            "wb"
-        ) as stderr:
+        with raw_file.open("wb") as stdout, stderr_file.open("wb") as stderr:
             proc = subprocess.run(
                 cmd,
-                stdin=stdin,
+                cwd=codex_cwd,
+                env=env,
                 stdout=stdout,
                 stderr=stderr,
                 timeout=timeout_sec,
@@ -155,24 +183,47 @@ def run_codex(
     except subprocess.TimeoutExpired:
         err_tail = tail_text(stderr_file, lines=10)
         raw_file.write_text(
-            "CODEX_TIMEOUT: codex exec exceeded "
+            "CODEX_TIMEOUT: codex-plugin task exceeded "
             f"{timeout_sec}s local timeout\n--- last stderr ---\n{err_tail}\n",
             encoding="utf-8",
         )
         return 124
     except OSError as exc:
         raw_file.write_text(
-            f"CODEX_ERROR: failed to execute {codex_bin}: {exc}\n",
+            f"CODEX_ERROR: failed to exec node/codex-companion.mjs: {exc}\n",
             encoding="utf-8",
         )
         return 126
+
+
+def run_backend(
+    backend: str,
+    prompt_file: Path,
+    raw_file: Path,
+    stderr_file: Path,
+    timeout_sec: int,
+) -> int:
+    """Dispatch opposing-view generation to the selected heterogeneous backend.
+
+    A backend takes a prompt file and writes the model's raw response to
+    `raw_file`; it may optionally write diagnostic logs to `stderr_file`.
+    Return the subprocess exit code; non-zero triggers the fallback path in
+    `parse-opposing-output.py`.
+    """
+    if backend == "codex-plugin":
+        return _run_codex_plugin(prompt_file, raw_file, stderr_file, timeout_sec)
+    raw_file.write_text(
+        f"CODEX_ERROR: unsupported OPPOSING_BACKEND={backend!r}\n",
+        encoding="utf-8",
+    )
+    return 127
 
 
 def parse_codex(raw_file: Path, output_file: Path, ok_file: Path) -> bool:
     proc = subprocess.run(
         [
             sys.executable,
-            str(SCRIPT_DIR / "parse-codex-output.py"),
+            str(SCRIPT_DIR / "parse-opposing-output.py"),
             "--input",
             str(raw_file),
             "--output",
@@ -187,7 +238,7 @@ def parse_codex(raw_file: Path, output_file: Path, ok_file: Path) -> bool:
     )
     if proc.returncode not in (0, 1):
         print(
-            "[run-opposing-codex] warning: parse-codex-output failed: "
+            "[run-opposing-agent] warning: parse-opposing-output failed: "
             f"{proc.stderr.strip() or proc.stdout.strip()}",
             file=sys.stderr,
         )
@@ -204,8 +255,17 @@ def main() -> int:
     parser.add_argument("--window-end-iso", required=True)
     parser.add_argument("--target-date", required=True)
     parser.add_argument("--run-dir", required=True)
-    parser.add_argument("--codex-bin", default="codex")
-    parser.add_argument("--codex-timeout", type=int, default=600)
+    parser.add_argument(
+        "--opposing-backend",
+        default=os.environ.get("OPPOSING_BACKEND", DEFAULT_BACKEND),
+        help="Heterogeneous reviewer backend (default: codex-plugin).",
+    )
+    parser.add_argument(
+        "--opposing-timeout",
+        type=int,
+        default=600,
+        help="Runner-side timeout (seconds) for the backend subprocess.",
+    )
     parser.add_argument("--notify-failure", action="store_true")
     parser.add_argument("--send-telegram", action="store_true")
     ns = parser.parse_args()
@@ -256,12 +316,12 @@ def main() -> int:
     ok_file = run_dir / "opposing.ok"
     analysis_file = run_dir / "analysis.txt"
 
-    code = run_codex(
+    code = run_backend(
+        backend=ns.opposing_backend,
         prompt_file=prompt_file,
         raw_file=raw_file,
         stderr_file=stderr_file,
-        codex_bin=ns.codex_bin,
-        timeout_sec=ns.codex_timeout,
+        timeout_sec=ns.opposing_timeout,
     )
     if code not in (0, 124, 127):
         raw_tail = tail_text(raw_file, lines=20)
