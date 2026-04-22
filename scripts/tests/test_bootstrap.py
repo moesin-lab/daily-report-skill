@@ -24,8 +24,12 @@ class BootstrapTest(unittest.TestCase):
         extra_env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
-        # bootstrap.py auto-loads SKILL_DIR/.env; set empty strings so the
-        # loader's "key already in env" guard skips injecting real values.
+        # bootstrap.py auto-loads SKILL_DIR/.env on import; the loader's
+        # contract is "if key is already in os.environ, leave it alone".
+        # Tests sit inside the real skill directory, so we can't pick an
+        # empty .env — pre-seeding an empty string is the sanctioned way
+        # to tell the loader "already set, stay out" without mutating
+        # the .env file. extra_env can override with real values.
         env["BLOG_DIR"] = ""
         env["BLOG_FACETS_ROOT"] = ""
         if extra_env:
@@ -67,10 +71,11 @@ class BootstrapTest(unittest.TestCase):
                 f"export OUTSIDE_NOTES_FILE='{run_dir / 'outside-notes.md'}'",
                 result.stdout,
             )
-            # BLOG_DIR / BLOG_FACETS_ROOT must not appear when unset, so
-            # downstream stages fail loudly instead of sourcing an empty string.
-            self.assertNotIn("export BLOG_DIR=", result.stdout)
-            self.assertNotIn("export BLOG_FACETS_ROOT=", result.stdout)
+            # BLOG_DIR / BLOG_FACETS_ROOT are always exported (possibly
+            # empty) so current.env is a single uniform contract;
+            # downstream fail-loud comes from `${BLOG_DIR:?}` on empty.
+            self.assertIn("export BLOG_DIR=''", result.stdout)
+            self.assertIn("export BLOG_FACETS_ROOT=''", result.stdout)
 
             env_file = run_dir / "bootstrap.env"
             summary_file = run_dir / "bootstrap-summary.json"
