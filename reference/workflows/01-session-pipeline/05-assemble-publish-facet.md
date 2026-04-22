@@ -4,7 +4,6 @@
 
 ```bash
 python3 ~/.claude/skills/daily-report/scripts/session/assemble-session-cards.py
-export SESSION_CARDS_FILE="$RUN_DIR/session-cards.md"
 ```
 
 发布 facet JSON 到 submodule：

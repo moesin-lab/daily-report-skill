@@ -168,10 +168,18 @@ def main() -> int:
     runtime_issues_file = run_dir / "runtime-issues.txt"
     bootstrap_summary_file = run_dir / "bootstrap-summary.json"
     bootstrap_env_file = run_dir / "bootstrap.env"
+    session_cards_file = run_dir / "session-cards.md"
+    outside_notes_file = run_dir / "outside-notes.md"
     state_dir = Path(ns.state_dir)
     state_dir.mkdir(parents=True, exist_ok=True)
     current_env_file = state_dir / "current.env"
     current_summary_file = state_dir / "current-summary.json"
+
+    # Always export even when empty; fail-loud is `${BLOG_DIR:?}` downstream.
+    blog_dir = os.environ.get("BLOG_DIR", "")
+    blog_facets_root = os.environ.get("BLOG_FACETS_ROOT", "")
+    if not blog_facets_root and blog_dir:
+        blog_facets_root = str(Path(blog_dir) / "facets" / "facets")
 
     session_paths = find_sessions.find_sessions(
         Path(ns.projects_root).expanduser(),
@@ -211,6 +219,10 @@ def main() -> int:
         "BOOTSTRAP_ENV_FILE": str(bootstrap_env_file),
         "CURRENT_BOOTSTRAP_ENV_FILE": str(current_env_file),
         "CURRENT_BOOTSTRAP_SUMMARY_FILE": str(current_summary_file),
+        "SESSION_CARDS_FILE": str(session_cards_file),
+        "OUTSIDE_NOTES_FILE": str(outside_notes_file),
+        "BLOG_DIR": blog_dir,
+        "BLOG_FACETS_ROOT": blog_facets_root,
         "session_count": len(session_paths),
         "github_event_count": github_event_count,
         "token_stats": stats,
@@ -236,6 +248,10 @@ def main() -> int:
         "BOOTSTRAP_ENV_FILE": bootstrap_env_file,
         "CURRENT_BOOTSTRAP_ENV_FILE": current_env_file,
         "CURRENT_BOOTSTRAP_SUMMARY_FILE": current_summary_file,
+        "SESSION_CARDS_FILE": session_cards_file,
+        "OUTSIDE_NOTES_FILE": outside_notes_file,
+        "BLOG_DIR": blog_dir,
+        "BLOG_FACETS_ROOT": blog_facets_root,
         "TOKEN_STATS": token_stats_text,
     }
     env_text = _format_exports(exports)
