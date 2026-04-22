@@ -37,14 +37,7 @@
 - `OUTSIDE_NOTES_FILE`：写入路径。
 - `OUTSIDE_NOTES_COUNT`：bullet 条数（空目录为 0）。
 
-主 agent 收到后写入 `$BOOTSTRAP_ENV_FILE` 和 `/tmp/daily-report/current.env`：
-
-```bash
-echo "export OUTSIDE_NOTES_FILE=\"$RUN_DIR/outside-notes.md\"" >> "$BOOTSTRAP_ENV_FILE"
-echo "export OUTSIDE_NOTES_FILE=\"$RUN_DIR/outside-notes.md\"" >> /tmp/daily-report/current.env
-```
-
-后续 Bash 调用前必须 `source /tmp/daily-report/current.env` 才能读到该变量。
+`$OUTSIDE_NOTES_FILE` 已由第 0 步 bootstrap 固化进 `$BOOTSTRAP_ENV_FILE` 和 `/tmp/daily-report/current.env`（值为 `$RUN_DIR/outside-notes.md`），子 agent 只需按该路径写入，后续阶段 `source /tmp/daily-report/current.env` 即可读到，无需再追加 export。
 
 ## 约束
 

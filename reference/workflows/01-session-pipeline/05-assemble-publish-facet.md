@@ -4,8 +4,9 @@
 
 ```bash
 python3 ~/.claude/skills/daily-report/scripts/session/assemble-session-cards.py
-export SESSION_CARDS_FILE="$RUN_DIR/session-cards.md"
 ```
+
+`$SESSION_CARDS_FILE` 已由第 0 步 bootstrap 固化为 `$RUN_DIR/session-cards.md`，本步骤直接复用，无需再 `export`。
 
 发布 facet JSON 到 submodule：
 
