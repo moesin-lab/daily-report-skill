@@ -24,12 +24,8 @@ class BootstrapTest(unittest.TestCase):
         extra_env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
-        # bootstrap.py auto-loads SKILL_DIR/.env on import; the loader's
-        # contract is "if key is already in os.environ, leave it alone".
-        # Tests sit inside the real skill directory, so we can't pick an
-        # empty .env — pre-seeding an empty string is the sanctioned way
-        # to tell the loader "already set, stay out" without mutating
-        # the .env file. extra_env can override with real values.
+        # Pre-seed empty so _load_dotenv's "key in os.environ" guard
+        # skips injecting host .env values into the test subprocess.
         env["BLOG_DIR"] = ""
         env["BLOG_FACETS_ROOT"] = ""
         if extra_env:
@@ -71,9 +67,6 @@ class BootstrapTest(unittest.TestCase):
                 f"export OUTSIDE_NOTES_FILE='{run_dir / 'outside-notes.md'}'",
                 result.stdout,
             )
-            # BLOG_DIR / BLOG_FACETS_ROOT are always exported (possibly
-            # empty) so current.env is a single uniform contract;
-            # downstream fail-loud comes from `${BLOG_DIR:?}` on empty.
             self.assertIn("export BLOG_DIR=''", result.stdout)
             self.assertIn("export BLOG_FACETS_ROOT=''", result.stdout)
 

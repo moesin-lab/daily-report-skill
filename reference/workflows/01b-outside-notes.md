@@ -37,8 +37,6 @@
 - `OUTSIDE_NOTES_FILE`：写入路径。
 - `OUTSIDE_NOTES_COUNT`：bullet 条数（空目录为 0）。
 
-`$OUTSIDE_NOTES_FILE` 已由第 0 步 bootstrap 固化进 `$BOOTSTRAP_ENV_FILE` 和 `/tmp/daily-report/current.env`（值为 `$RUN_DIR/outside-notes.md`），子 agent 只需按该路径写入，后续阶段 `source /tmp/daily-report/current.env` 即可读到，无需再追加 export。
-
 ## 约束
 
 - 子 agent 禁止读 `$OUTSIDE_NOTES_DIR/` 以外的路径。

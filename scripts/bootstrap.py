@@ -175,13 +175,7 @@ def main() -> int:
     current_env_file = state_dir / "current.env"
     current_summary_file = state_dir / "current-summary.json"
 
-    # BLOG_DIR / BLOG_FACETS_ROOT come from skill .env. Both are always
-    # exported (possibly as empty string) so current.env has a single,
-    # uniform contract — downstream scripts rely on `${BLOG_DIR:?}` to
-    # fail loud when the value is missing, not on the key being absent.
-    # Note: prepare-session-run.py and publish-facet.py carry their own
-    # fallback to $BLOG_DIR/facets/facets for standalone use; when the
-    # normal bootstrap path runs, they read the value from env instead.
+    # Always export even when empty; fail-loud is `${BLOG_DIR:?}` downstream.
     blog_dir = os.environ.get("BLOG_DIR", "")
     blog_facets_root = os.environ.get("BLOG_FACETS_ROOT", "")
     if not blog_facets_root and blog_dir:
