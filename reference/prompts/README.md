@@ -7,7 +7,7 @@
 | `privacy-review.md` | 2.1 / 2.6 | Haiku | 日报发布前隐私审查与全文复审 |
 | `neutral-analysis.md` | 2.3 | Opus | Claude sub-agent 中立辨析 |
 | `candidate-generator.md` | 2.4a | Opus | 生成思考、建议、memory 候选 |
-| `candidate-validator.md` | 2.4b | Haiku | 对单条候选做独立准入复核 |
+| `candidate-validator.md` | 2.4b | deepseek-chat（via `proxy-agent`） | 对单条候选做独立准入复核 |
 | `tldr-generator.md` | 2.7 | Opus | 生成日报顶部 TL;DR 段落，校验与重试由 `scripts/review/insert-tldr.py` 兜底 |
 
 约束：

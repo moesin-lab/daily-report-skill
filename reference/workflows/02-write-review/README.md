@@ -19,7 +19,7 @@
 2. 读取 `01-privacy-first-pass.md` 并调度 Haiku 隐私审查子 agent。
 3. 调度 Haiku 临时脚本子 agent 读取并执行 `02-opposing-agent.md`，回报 `$OPPOSING_OK` 和产物路径。
 4. `$OPPOSING_OK == 1` 时读取 `03-neutral-analysis.md` 并调度 Opus 中立辨析子 agent。
-5. 读取 `04-candidates.md` 并调度 Opus generator 与 Haiku validator；组装脚本可交给 Haiku 临时脚本子 agent。
+5. 读取 `04-candidates.md` 并调度 Opus generator 与 deepseek-chat validator（通过 `proxy-agent`）；组装脚本可交给 Haiku 临时脚本子 agent。
 6. 调度 Opus 写作子 agent 读取并执行 `05-final-assembly.md`，回报日报 Markdown 路径。
 7. 读取 `06-privacy-final-pass.md` 并调度 Haiku 全文隐私复审子 agent。
 8. 读取 `07-tldr.md` 并按重试循环调度 Opus TL;DR 生成子 agent，校验 + 插入由 `scripts/review/insert-tldr.py` 兜底；失败不阻塞发布。

@@ -1,6 +1,6 @@
 # candidate-validator
 
-用途：第 2.4b 步候选验证。每条候选启动一个 Claude `general-purpose` sub-agent，模型指定 Haiku。按占位符替换：
+用途：第 2.4b 步候选验证。每条候选通过 `proxy-agent` 派给外部 `deepseek-chat`（不消耗 Anthropic token；详见 `reference/workflows/02-write-review/04-candidates.md`）。按占位符替换：
 
 - `{{CANDIDATE_JSON}}`
 - `{{SESSION_CARDS}}`
